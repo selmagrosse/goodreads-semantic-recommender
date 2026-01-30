@@ -7,7 +7,6 @@ For each book:
 - Falls back to title + author search
 
 Saves descriptions in the 'Description Google' column.
-
 """
 
 from typing import Optional
@@ -81,7 +80,6 @@ def add_google_descriptions(
         DataFrame with a new 'Description Google' column.
     """
     descriptions = []
-
     total = len(df)
 
     for i, row in df.iterrows():
