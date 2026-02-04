@@ -1,11 +1,28 @@
 """
-Quality evaluation of book descriptions using an LLM.
+Module for evaluating the quality of book descriptions using a language model (LLM).
 
-This script:
-- Loads cleaned Goodreads dataset enriched with book descriptions from three sources: Google Books, OpenLibrary, and LLM-generated descriptions
-- Normalizes description text across three sources
-- Uses an LLM (GPT-4o-mini) to score the quality of each description on a scale from 1 to 10 
-- Outputs a dataset with per-source quality scores
+This module provides reusable functions to:
+- Normalize and clean description text from multiple sources
+- Score the quality of descriptions using GPT-4o-mini on a scale from 1 (very bad) to 10 (excellent)
+- Apply scoring to one or more columns in a pandas DataFrame
+
+Functions:
+- normalize_text(text: str) -> str
+    Normalize a single description by collapsing whitespace and stripping extra spaces.
+
+- score_description(description: str) -> int
+    Use the LLM to rate a single description, returning an integer score between 1 and 10.
+    Returns 0 for invalid, missing, or too short descriptions.
+
+- score_description_column(df: pd.DataFrame, desc_col: str, score_col: str) -> pd.Series
+    Apply `score_description` to a full DataFrame column and return a Series of scores.
+
+- normalize_descriptions(df: pd.DataFrame, description_cols: list[str]) -> pd.DataFrame
+    Normalize multiple description columns in a DataFrame.
+
+- evaluate_descriptions(df: pd.DataFrame, description_cols: dict[str, str]) -> pd.DataFrame
+    Normalize and score multiple description columns, returning a DataFrame with
+    new quality score columns.
 """
 
 import openai
@@ -16,15 +33,6 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-INPUT_FILE = "/content/goodreads_library_descriptions_cleaned.csv"
-OUTPUT_FILE = "/content/goodreads_library_descriptions_quality_scored.csv"
-
-DESCRIPTION_COLS = {
-    "Description Google": "Quality Score Google",
-    "Description OpenLibrary": "Quality Score OpenLibrary",
-    "Description LLM": "Quality Score LLM",
-}
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
@@ -43,7 +51,7 @@ def normalize_text(text: str) -> str:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
 
-def score_with_gpt(description: str) -> int:
+def score_description(description: str) -> int:
     """
     Score a book description using an LLM.
 
@@ -97,40 +105,32 @@ def score_description_column(
     scores = []
 
     for desc in tqdm(df[desc_col], desc=f"Scoring {desc_col}"):
-        scores.append(score_with_gpt(desc))
+        scores.append(score_description(desc))
 
     return pd.Series(scores, name=score_col)
 
-def main():
-    print("Loading data...")
-    df = pd.read_csv(INPUT_FILE)
+def normalize_descriptions(df: pd.DataFrame, description_cols: list[str]) -> pd.DataFrame:
+    for col in description_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(normalize_text)
+    return df
 
-    # Normalize descriptions
-    for col in DESCRIPTION_COLS:
-        df[col] = df[col].apply(normalize_text)
+def evaluate_descriptions(df: pd.DataFrame, description_cols: dict[str, str]) -> pd.DataFrame:
+    """
+    Score each description in a given column and add a corresponding score column.
 
+    Parameters
+    ----------
+    df: DataFrame with description columns
+    description_cols: dict mapping description column → score column name
+
+    Returns
+    -------
+    DataFrame with added score columns
+    """
+    df = normalize_descriptions(df, list(description_cols.keys()))
     # Score each source
-    for desc_col, score_col in DESCRIPTION_COLS.items():
-        print(f"\nScoring {desc_col} → {score_col}")
+    for desc_col, score_col in description_cols.items():
         df[score_col] = score_description_column(df, desc_col, score_col)
-
-    # Inspect
-    print(
-        df[
-            [
-                "Title",
-                "Author",
-                "Quality Score Google",
-                "Quality Score OpenLibrary",
-                "Quality Score LLM",
-            ]
-        ].head(20)
-    )
-
-    # Save
-    df.to_csv(OUTPUT_FILE, index=False)
-    print(f"\nSaved scored dataset to {OUTPUT_FILE}")
-
-if __name__ == "__main__":
-    main()
+    return df
 
