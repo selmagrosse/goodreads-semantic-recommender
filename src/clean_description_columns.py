@@ -10,15 +10,6 @@ This script:
 
 import pandas as pd
 
-INPUT_PATH = "data/interim/goodreads_library_cleaned_descriptions.csv"
-OUTPUT_PATH = "data/interim/goodreads_library_descriptions_cleaned.csv"
-
-DESCRIPTION_COLS = [
-    "Description Google",
-    "Description OpenLibrary",
-    "Description LLM",
-]
-
 def clean_description(series: pd.Series) -> pd.Series:
     """
     Clean and normalize a description text column.
@@ -37,16 +28,30 @@ def clean_description(series: pd.Series) -> pd.Series:
         .str.strip()                                           # Strip again after replacements to clean up any leftover spaces
     )
 
-def main():
-    df = pd.read_csv(INPUT_PATH)
-    print(f"Loaded {len(df)} books")
+def clean_description_columns(
+    df: pd.DataFrame,
+    columns: list[str]) -> pd.DataFrame:
+    """
+    Clean specified description columns in a DataFrame.
 
-    for col in DESCRIPTION_COLS:
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame
+    columns : list[str]
+        List of column names to clean
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with cleaned columns
+    """
+
+    for col in columns:
+        if col not in df.columns:
+            print(f"Warning: column '{col}' not found, skipping")
+            continue
+
         df[col] = clean_description(df[col])
 
-    df.to_csv(OUTPUT_PATH, index=False)
-    print(f"Saved cleaned dataset to {OUTPUT_PATH}")
-
-
-if __name__ == "__main__":
-    main()
+    return df
