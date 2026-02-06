@@ -7,6 +7,39 @@ import os
 df = pd.read_csv("data/processed/goodreads_library_final_descriptions.csv")
 persist_path = os.path.abspath("vectorstore/chroma")
 
+# Explicit tag columns
+TAG_COLUMNS = [
+    "american",
+    "auto-biography",
+    "children",
+    "engineering",
+    "ex-yu",
+    "favorites",
+    "feminism",
+    "immigration",
+    "indian",
+    "latin-america",
+    "lists",
+    "own",
+    "philosophy",
+    "play",
+    "poetry",
+    "psychology",
+    "re-read",
+    "read",
+    "read-in-german",
+    "russian",
+    "sci-fi",
+    "science",
+    "to-read",
+    "travel",
+]
+
+# Ensure boolean type (important for Chroma filtering)
+df[TAG_COLUMNS] = df[TAG_COLUMNS].fillna(0).astype(bool)
+print(df[TAG_COLUMNS].dtypes)
+print(df[TAG_COLUMNS].head())
+
 # Ensure no missing final_description
 df = df.dropna(subset=["Final Description"])
 
@@ -35,8 +68,8 @@ collection = client.get_or_create_collection(
 # Store metadata
 metadata_columns = ["Title", "Author", "ISBN", "ISBN13","Number of Pages", "Original Publication Year", 
                     "My Rating", "Average Rating", "Final Description Source", 
-                    "Final Description Score", "Tag List"]
-metadata = df[metadata_columns].to_dict(orient="records")
+                    "Final Description Score"] + TAG_COLUMNS
+metadatas = df[metadata_columns].to_dict(orient="records")
 
 # Ensure unique IDs for Chroma
 df = df.reset_index()  # ensures unique integer index
@@ -46,7 +79,7 @@ ids = df.index.astype(str).tolist()  # unique string IDs for Chroma
 collection.add(
     ids=ids,   # unique IDs
     embeddings=embeddings.tolist(),
-    metadatas=metadata,
+    metadatas=metadatas,
     documents=df["Final Description"].tolist()  # optional, raw text
 )
 
