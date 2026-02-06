@@ -12,7 +12,7 @@ This script:
 import pandas as pd
 from fetch_descriptions_google import add_google_descriptions
 from fetch_descriptions_openlibrary import add_openlibrary_descriptions
-from clean_data.clean_description_columns import clean_description_columns
+from clean_description_columns import clean_description_columns
 
 INPUT_PATH = "data/interim/goodreads_library_cleaned.csv"
 OUTPUT_PATH = "data/interim/goodreads_library_cleaned_descriptions.csv"
