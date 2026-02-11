@@ -112,7 +112,11 @@ def generate_embeddings(texts, model_name="all-MiniLM-L6-v2"):
     Generate sentence embeddings for a list of texts using a SentenceTransformer model.
     """
     model = SentenceTransformer(model_name)
-    return model.encode(texts, show_progress_bar=True)
+    return model.encode(
+        texts, 
+        show_progress_bar=True,
+        normalize_embeddings=True
+    )
 
 
 def ingest_into_chroma(df, embeddings, persist_path):
@@ -123,7 +127,8 @@ def ingest_into_chroma(df, embeddings, persist_path):
 
     collection = client.get_or_create_collection(
         name="books",
-        embedding_function=None
+        embedding_function=None,
+        metadata={"hnsw:space": "cosine"}
     )
 
     metadata_columns = [
