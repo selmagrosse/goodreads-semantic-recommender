@@ -11,13 +11,10 @@ Semantic tags are embedded to support taste-aware recommendations,
 while logistical tags are kept only as metadata for filtering.
 """
 
-from http import client
-from xml.parsers.expat import model
 import pandas as pd
-from sentence_transformers import SentenceTransformer
 import chromadb
-from chromadb.config import Settings
 import os
+from src.embedding_function import embed_texts
 
 # Explicit tag columns present in the dataset
 TAG_COLUMNS = [
@@ -107,23 +104,17 @@ def build_embedding_text(row):
 
     return "\n".join(parts)
 
-def generate_embeddings(texts, model_name="all-MiniLM-L6-v2"):
-    """
-    Generate sentence embeddings for a list of texts using a SentenceTransformer model.
-    """
-    model = SentenceTransformer(model_name)
-    return model.encode(
-        texts, 
-        show_progress_bar=True,
-        normalize_embeddings=True
-    )
-
-
 def ingest_into_chroma(df, embeddings, persist_path):
     """
     Store embeddings, metadata, and documents into a persistent Chroma collection.
     """
     client = chromadb.PersistentClient(path=persist_path)
+
+    # delete previous collection if exists
+    try:
+        client.delete_collection("books")
+    except:
+        pass
 
     collection = client.get_or_create_collection(
         name="books",
@@ -174,7 +165,11 @@ def main():
     df = pd.read_csv(data_path)
 
     # Ensure boolean tag columns (required for Chroma filtering)
-    df[TAG_COLUMNS] = df[TAG_COLUMNS].fillna(0).astype(bool)
+    for col in TAG_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].fillna(False).astype(bool)
+        else:
+            df[col] = False
 
     # Drop rows without a final description
     df = df.dropna(subset=["Final Description"])
@@ -183,7 +178,7 @@ def main():
     df["embedding_text"] = df.apply(build_embedding_text, axis=1)
 
     # Generate embeddings
-    embeddings = generate_embeddings(df["embedding_text"].tolist())
+    embeddings = embed_texts(df["embedding_text"].tolist())
 
     # Ingest into Chroma
     ingest_into_chroma(df, embeddings, persist_path)
