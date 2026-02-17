@@ -46,8 +46,6 @@ class Library:
         if tag not in self.tag_columns:
             return pd.DataFrame()
         books = self.df[self.df[tag] == 1].copy()
-        # Add cover URLs dynamically
-        books["Cover URL"] = books["ISBN"].apply(self.get_cover_url)
         return books
 
     @staticmethod
