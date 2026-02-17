@@ -3,3 +3,6 @@
 data/
 .env
 __pycache__/
+.gradio/
+vectorstore/
+notebooks/
