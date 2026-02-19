@@ -22,16 +22,14 @@ def show_books_by_tag(tag):
 
     for _, b in books.iterrows():
         md += f"### {b['Title']} — {b['Author']}\n"
-        isbn = b.get("ISBN", "")
-        cover_url = Library.get_cover_url(isbn)
-        md += f"![cover]({cover_url})\n\n"
+        cover_path = Library.get_cover_path(b)
+        md += f"![cover](/file={cover_path})\n\n"
         md += f"My rating: {b['My Rating']} | Avg: {b['Average Rating']}\n\n"
         md += f"Tags: {format_tags(b)}\n\n"
-
         if b["Final Description"]:
-            md += f"{b['Final Description'][:300]}...\n\n"
+            md += b["Final Description"]
 
-        md += "---\n"
+        md += "\n"
 
     return md
 
@@ -48,14 +46,13 @@ def show_books_semantic(query, n_results=5):
     md = f"# Recommendations for '{query}'\n\n"
     for b, doc, d in zip(books, docs, distances):
         md += f"### {b['Title']} — {b['Author']} (score: {d:.3f})\n"
-        isbn = b.get("ISBN", "")
-        cover_url = Library.get_cover_url(isbn)
-        md += f"![cover]({cover_url})\n\n"
+        cover_path = Library.get_cover_path(b)
+        md += f"![cover]({cover_path})\n\n"
         md += f"My rating: {b['My Rating']} | Avg: {b['Average Rating']}\n\n"
         md += f"Tags: {format_tags(b)}\n\n"
         if doc:
-            md += f"{doc[:300]}...\n\n"
-        md += "---\n"
+            md += doc
+        md += "\n"
     return md
 
 # Yearly To-Read Recommender
@@ -69,12 +66,11 @@ def yearly_to_read(genre1, n1, genre2, n2):
             continue
         results = vector_store.recommend(text_query=genre, n_results=int(n))
         for b, doc, d in zip(results["metadatas"][0], results["documents"][0], results["distances"][0]):
-            isbn = b.get("ISBN", "")
-            cover_url = repo.get_cover_url(isbn)
+            cover_path = Library.get_cover_path(b)
             recommendations.append({
                 "title": b["Title"],
                 "author": b["Author"],
-                "cover_url": cover_url,
+                "cover_path": cover_path,
                 "score": d,
                 "description": doc or ""
             })
@@ -83,9 +79,9 @@ def yearly_to_read(genre1, n1, genre2, n2):
     md = "## Your To-Read Recommendations\n\n"
     for b in recommendations:
         md += f"### {b['title']} — {b['author']} (score: {b['score']:.3f})\n"
-        md += f"![cover]({b['cover_url']})\n\n"
-        md += f"{b['description'][:300]}...\n\n"
-        md += "---\n"
+        md += f"![cover]({b['cover_path']})\n\n"
+        md += f"{b['description']}\n\n"
+        md += "\n"
     return md
 
 # Gradio UI

@@ -34,6 +34,7 @@ TAG_COLUMNS = [
 class Library:
     def __init__(self, path=DATA_PATH):
         self.df = pd.read_csv(path)
+        self.df.columns = self.df.columns.str.strip()
         self.tag_columns = [
             col for col in self.df.columns
             if col in TAG_COLUMNS
@@ -49,7 +50,8 @@ class Library:
         return books
 
     @staticmethod
-    def get_cover_url(isbn):
-        if isbn and isbn != "0":
-            return f"https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
-        return "https://via.placeholder.com/120x180?text=No+Cover"
+    def get_cover_path(row):
+        path = row.get("Cover Path", "")
+        if isinstance(path, str) and path.strip():
+            return f"/file={path}"
+        return "/file=covers/no_cover.jpg"
