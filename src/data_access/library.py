@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from pathlib import Path
 
@@ -53,5 +54,5 @@ class Library:
     def get_cover_path(row):
         path = row.get("Cover Path", "")
         if isinstance(path, str) and path.strip():
-            return f"/file={path}"
-        return "/file=covers/no_cover.jpg"
+            return path
+        return "covers/no_cover.jpg"
