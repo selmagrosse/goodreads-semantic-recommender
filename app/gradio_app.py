@@ -41,7 +41,8 @@ def show_books_by_tag(tag):
         return f"No books found for '{tag}'"
     md = f"# {tag.capitalize()} books\n\n"
     for _, b in books.iterrows():
-        cover_path = Library.get_cover_path(b)
+        #cover_path = Library.get_cover_path(b)
+        cover_path = Library.get_cover_url(b.get("ISBN", ""))
         md += f"### {b['Title']} — {b['Author']}\n"
         md += f"![cover]({cover_path})\n\n"
         md += f"My rating: {b['My Rating']} | Avg: {b['Average Rating']}\n\n"
@@ -64,6 +65,7 @@ def show_books_semantic(query, n_results=5):
     md = f"# Recommendations for '{query}'\n\n"
     for b, doc, d in zip(books, docs, distances):
         cover_path = Library.get_cover_path(b)
+        cover_path = Library.get_cover_url(b.get("ISBN", ""))
         md += f"### {b['Title']} — {b['Author']} (score: {d:.3f})\n"
         md += f"![cover]({cover_path})\n\n"
         md += f"My rating: {b['My Rating']} | Avg: {b['Average Rating']}\n\n"
@@ -121,6 +123,7 @@ def yearly_to_read(blocks):
         genre = g["genre"]
         n = g["n"]
         filters = build_filter_dict(g["filters"].items())
+        use_seed = g.get("use_seed", True)
         print(f"Processing genre '{genre}' with filters: {filters}")
 
         # Apply metadata filters (including "to-read" if selected)
@@ -132,13 +135,14 @@ def yearly_to_read(blocks):
         valid_isbns = set(df_filtered["ISBN13"].dropna().astype(str))
 
         # Semantic recommendations (fetch more than n to allow filtering)
-        results = vector_store.recommend(text_query=genre, n_results=50)
+        results = vector_store.recommend(text_query=genre, repo=repo, use_seed=use_seed, n_results=50)
 
         count = 0
         for b, doc, d in zip(results["metadatas"][0], results["documents"][0], results["distances"][0]):
             book_isbn = str(b.get("ISBN13", "")).strip()
             if book_isbn in valid_isbns:
                 cover_path = Library.get_cover_path(b)
+                cover_path = Library.get_cover_url(b.get("ISBN", ""))
                 recommendations.append({
                     "title": b["Title"],
                     "author": b["Author"],
@@ -213,6 +217,7 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
                 # Always visible
                 genre = gr.Textbox(label=f"Prompt {i+1}")
                 number = gr.Number(label="How many books", precision=0, value=None)
+                use_seed = gr.Checkbox(label="Use my taste profile", value=True)
 
                 # Collapsible metadata filters
                 with gr.Accordion(label="Optional metadata filters", open=False):
@@ -235,7 +240,7 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
                         cat_inputs.append(gr.Textbox(label=col, placeholder="Leave empty if no filter"))
 
                 # Collect all inputs for this row
-                row_inputs = [genre, number] + numeric_inputs + tag_inputs + cat_inputs
+                row_inputs = [genre, number, use_seed] + numeric_inputs + tag_inputs + cat_inputs
                 inputs += row_inputs
                 rows.append(row)
 
@@ -246,10 +251,11 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
         # Generate function
         def collect_inputs_with_metadata(*vals):
             blocks = []
-            step = 2 + len(NUMERIC_COLUMNS)*2 + len(TAG_COLUMNS) + len(CATEGORICAL_COLUMNS)
+            step = 3 + len(NUMERIC_COLUMNS)*2 + len(TAG_COLUMNS) + len(CATEGORICAL_COLUMNS)
             for i in range(0, len(vals), step):
                 genre = vals[i]
                 n = vals[i+1]
+                use_seed = vals[i+2]
                 if not genre or not n or int(n) <= 0:
                     continue
 
@@ -257,8 +263,8 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
 
                 # Numeric filters
                 for j, col in enumerate(NUMERIC_COLUMNS):
-                    min_val = vals[i + 2 + j*2]
-                    max_val = vals[i + 2 + j*2 + 1]
+                    min_val = vals[i + 3 + j*2]
+                    max_val = vals[i + 3 + j*2 + 1]
                     cond = {}
                     if min_val not in [None, ""]:
                         try:
@@ -274,7 +280,7 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
                         filters[col] = cond
 
                 # Tag filters
-                tag_start = i + 2 + len(NUMERIC_COLUMNS)*2
+                tag_start = i + 3 + len(NUMERIC_COLUMNS)*2
                 for k, tag in enumerate(TAG_COLUMNS):
                     val = vals[tag_start + k]
                     if val is True:           # only include if explicitly checked
@@ -287,7 +293,7 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
                     if val:
                         filters[col] = val
 
-                blocks.append({"genre": genre.strip(), "n": int(n), "filters": filters})
+                blocks.append({"genre": genre.strip(), "n": int(n), "use_seed": use_seed, "filters": filters})
 
             if not blocks:
                 return "Please add at least one genre."
