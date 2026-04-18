@@ -15,34 +15,7 @@ import pandas as pd
 import chromadb
 import os
 from src.embedding_function import embed_texts
-
-# Explicit tag columns present in the dataset
-TAG_COLUMNS = [
-    "american",
-    "auto-biography",
-    "children",
-    "engineering",
-    "ex-yu",
-    "favorites",
-    "feminism",
-    "immigration",
-    "indian",
-    "latin-america",
-    "lists",
-    "own",
-    "philosophy",
-    "play",
-    "poetry",
-    "psychology",
-    "re-read",
-    "read",
-    "read-in-german",
-    "russian",
-    "sci-fi",
-    "science",
-    "to-read",
-    "travel",
-]
+from src.data_access.library import TAG_COLUMNS
 
 # Semantic expensions for tags used in embeddings (own, re-read, read, to-read, read-in-german are not embedding-expanded as they are more about personal reading status rather than content)
 TAG_EXPANSIONS = {
@@ -113,7 +86,7 @@ def ingest_into_chroma(df, embeddings, persist_path):
     # delete previous collection if exists
     try:
         client.delete_collection("books")
-    except:
+    except Exception:
         pass
 
     collection = client.get_or_create_collection(

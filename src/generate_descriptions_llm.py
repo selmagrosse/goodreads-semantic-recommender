@@ -83,10 +83,8 @@ def add_llm_descriptions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add LLM-generated descriptions to a Goodreads dataset.
 
-    Only fills descriptions when:
-    - 'Description Google' is missing
-    - 'Description OpenLibrary' is missing
-    - 'Description LLM' is missing
+    Only fills descriptions when no existing source has both a description
+    and a quality score above THRESHOLD.
 
     Parameters
     ----------
@@ -115,10 +113,10 @@ def add_llm_descriptions(df: pd.DataFrame) -> pd.DataFrame:
 
         # Only generate if other sources failed
         if (
-            pd.notna(row.get("Description Google"))
-            and (row.get("Quality Score Google", 0) > THRESHOLD)
-            or pd.notna(row.get("Description OpenLibrary"))
-            and (row.get("Quality Score OpenLibrary", 0) > THRESHOLD)
+            (pd.notna(row.get("Description Google"))
+             and row.get("Quality Score Google", 0) > THRESHOLD)
+            or (pd.notna(row.get("Description OpenLibrary"))
+                and row.get("Quality Score OpenLibrary", 0) > THRESHOLD)
         ):
             descriptions.append(None)
             continue

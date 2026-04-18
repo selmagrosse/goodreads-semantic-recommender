@@ -1,6 +1,4 @@
-import os
 import pandas as pd
-import requests
 import numpy as np
 from pathlib import Path
 
