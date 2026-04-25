@@ -105,7 +105,8 @@ def build_filter_dict(filter_inputs):
 
         # Boolean tag: (col, checkbox)
         elif isinstance(item[1], bool):
-            filters[col] = item[1]
+            if item[1]:
+                filters[col] = True
 
         # Text: (col, textbox)
         else:
@@ -122,7 +123,7 @@ def yearly_to_read(blocks):
     for g in blocks:
         genre = g["genre"]
         n = g["n"]
-        filters = build_filter_dict(g["filters"].items())
+        filters = g["filters"]
         use_seed = g.get("use_seed", True)
         print(f"Processing genre '{genre}' with filters: {filters}")
 
@@ -259,39 +260,20 @@ with gr.Blocks(title="My Book Library & Recommender") as demo:
                 if not genre or not n or int(n) <= 0:
                     continue
 
-                filters = {}
-
-                # Numeric filters
-                for j, col in enumerate(NUMERIC_COLUMNS):
-                    min_val = vals[i + 3 + j*2]
-                    max_val = vals[i + 3 + j*2 + 1]
-                    cond = {}
-                    if min_val not in [None, ""]:
-                        try:
-                            cond["min"] = float(min_val)
-                        except ValueError:
-                            pass
-                    if max_val not in [None, ""]:
-                        try:
-                            cond["max"] = float(max_val)
-                        except ValueError:
-                            pass
-                    if cond:
-                        filters[col] = cond
-
-                # Tag filters
+                filter_inputs = []
                 tag_start = i + 3 + len(NUMERIC_COLUMNS)*2
-                for k, tag in enumerate(TAG_COLUMNS):
-                    val = vals[tag_start + k]
-                    if val is True:           # only include if explicitly checked
-                        filters[tag] = True
-
-                # Categorical filters
                 cat_start = tag_start + len(TAG_COLUMNS)
+
+                for j, col in enumerate(NUMERIC_COLUMNS):
+                    filter_inputs.append((col, vals[i + 3 + j*2], vals[i + 3 + j*2 + 1]))
+
+                for k, tag in enumerate(TAG_COLUMNS):
+                    filter_inputs.append((tag, vals[tag_start + k]))
+
                 for l, col in enumerate(CATEGORICAL_COLUMNS):
-                    val = vals[cat_start + l]
-                    if val:
-                        filters[col] = val
+                    filter_inputs.append((col, vals[cat_start + l]))
+
+                filters = build_filter_dict(filter_inputs)
 
                 blocks.append({"genre": genre.strip(), "n": int(n), "use_seed": use_seed, "filters": filters})
 
